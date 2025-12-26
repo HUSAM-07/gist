@@ -1,136 +1,284 @@
-# PDF Summarizer
+# Gist
 
-A beautiful Next.js application that extracts content from PDF documents, summarizes them using Google's Gemini AI models via OpenRouter, and visualizes key concepts using Mermaid diagrams.
+**Extract the essence of any document in seconds.**
+
+Gist is a modern web application that transforms PDF documents into digestible summaries using Google's Gemini AI. It provides both technical and simplified explanations, along with visual concept maps powered by Mermaid diagrams.
+
+## Architecture
+
+```mermaid
+flowchart TB
+    subgraph Client["Client Layer"]
+        UI[Next.js Frontend]
+        Upload[PDF Upload Component]
+        Diagram[Mermaid Renderer]
+    end
+
+    subgraph Server["Server Layer"]
+        API["/api/analyze"]
+        Parser[PDF Parser]
+    end
+
+    subgraph External["External Services"]
+        OR[OpenRouter API]
+        Gemini[Gemini 2.0 Flash]
+    end
+
+    Upload --> API
+    API --> Parser
+    Parser --> OR
+    OR --> Gemini
+    Gemini --> OR
+    OR --> API
+    API --> UI
+    UI --> Diagram
+```
+
+## How It Works
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant API
+    participant PDFParser
+    participant OpenRouter
+    participant Gemini
+
+    User->>Frontend: Upload PDF
+    Frontend->>API: POST /api/analyze (FormData)
+    API->>PDFParser: Extract text content
+    PDFParser-->>API: Raw text + metadata
+    API->>OpenRouter: Send prompt + content
+    OpenRouter->>Gemini: Process with AI
+    Gemini-->>OpenRouter: Generated analysis
+    OpenRouter-->>API: JSON response
+    API-->>Frontend: Summary + Diagram + Metadata
+    Frontend->>User: Render results
+```
 
 ## Features
 
-- Upload PDF documents via drag-and-drop or file selection
-- Extract and analyze PDF content
-- Generate AI-powered summaries using Gemini 2.0 Flash
-- Visualize document concepts with Mermaid diagrams
-- Get both technical and layman's term summaries
-- Beautiful UI built with shadcn/ui components
-- Responsive design with modern styling
+| Feature | Description |
+|---------|-------------|
+| **PDF Upload** | Drag-and-drop or click-to-upload interface |
+| **Text Extraction** | Robust PDF parsing with page-level granularity |
+| **AI Summarization** | Dual summaries: technical depth + layman accessibility |
+| **Visual Diagrams** | Auto-generated Mermaid concept maps |
+| **Responsive UI** | Mobile-first design with shadcn/ui components |
 
 ## Tech Stack
 
-- **Next.js 15** - React framework with App Router
-- **TypeScript** - Type-safe development
-- **shadcn/ui** - Beautiful UI components built on Radix UI
-- **Tailwind CSS** - Utility-first CSS framework
-- **OpenRouter** - API gateway for AI models
-- **Gemini 2.0 Flash** - Google's latest AI model
-- **pdf-parse** - PDF text extraction
-- **Mermaid.js** - Diagram generation and visualization
-- **react-dropzone** - File upload handling
+```mermaid
+mindmap
+  root((Gist))
+    Frontend
+      Next.js 15
+      React 19
+      TypeScript
+      Tailwind CSS
+      shadcn/ui
+    Backend
+      Next.js API Routes
+      pdf-parse
+    AI
+      OpenRouter
+      Gemini 2.0 Flash
+    Visualization
+      Mermaid.js
+```
+
+### Core Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `next` | React framework with App Router |
+| `typescript` | Type-safe development |
+| `tailwindcss` | Utility-first styling |
+| `@radix-ui/*` | Accessible UI primitives |
+| `pdf-parse` | PDF text extraction |
+| `mermaid` | Diagram rendering |
+| `react-dropzone` | File upload handling |
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ installed
-- An OpenRouter API key (get one at [https://openrouter.ai/keys](https://openrouter.ai/keys))
+- Node.js 18+
+- OpenRouter API key ([get one here](https://openrouter.ai/keys))
 
 ### Installation
 
-1. Clone the repository or navigate to the project directory:
-
 ```bash
-cd pdf-summarizer
-```
+# Clone and navigate to project
+git clone <repository-url>
+cd gist
 
-2. Install dependencies:
-
-```bash
+# Install dependencies
 npm install
-```
 
-3. Set up environment variables:
-
-```bash
+# Configure environment
 cp .env.example .env.local
 ```
 
-4. Edit `.env.local` and add your OpenRouter API key:
+Edit `.env.local`:
 
-```
-OPENROUTER_API_KEY=your_openrouter_api_key_here
+```env
+OPENROUTER_API_KEY=your_api_key_here
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-5. Run the development server:
+### Development
 
 ```bash
 npm run dev
 ```
 
-6. Open [http://localhost:3000](http://localhost:3000) in your browser
-
-## Usage
-
-1. Click or drag-and-drop a PDF file onto the upload area
-2. Click "Analyze PDF" to process the document
-3. View the results:
-   - **Quick Summary**: A simple, layman's explanation
-   - **Visual Representation**: Mermaid diagram showing key concepts
-   - **Technical Summary**: Detailed analysis of the document
+Open [http://localhost:3000](http://localhost:3000)
 
 ## Project Structure
 
 ```
-pdf-summarizer/
+gist/
 ├── app/
 │   ├── api/
 │   │   └── analyze/
-│   │       └── route.ts          # API endpoint for PDF processing
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx                  # Main application page
+│   │       └── route.ts      # PDF processing endpoint
+│   ├── globals.css           # Global styles
+│   ├── layout.tsx            # Root layout
+│   └── page.tsx              # Main page
 ├── components/
-│   ├── ui/                       # shadcn/ui components
-│   ├── mermaid-diagram.tsx       # Mermaid diagram renderer
-│   └── pdf-upload.tsx            # PDF upload component
+│   ├── ui/                   # shadcn/ui components
+│   ├── mermaid-diagram.tsx   # Diagram renderer
+│   └── pdf-upload.tsx        # Upload component
 ├── lib/
-│   ├── openrouter.ts             # OpenRouter client configuration
-│   └── utils.ts                  # Utility functions
-└── public/                       # Static assets
+│   ├── openrouter.ts         # AI client config
+│   └── utils.ts              # Utility functions
+└── public/                   # Static assets
 ```
 
-## API Routes
+## API Reference
 
-### POST /api/analyze
+### `POST /api/analyze`
 
-Accepts a PDF file and returns an analysis including:
-- Technical summary
-- Mermaid diagram code
-- Layman's summary
-- Page count and file information
+Analyzes a PDF document and returns structured insights.
 
-**Request**: FormData with `file` field containing the PDF
-**Response**: JSON with analysis results
+**Request**
 
-## Environment Variables
+```
+Content-Type: multipart/form-data
 
-- `OPENROUTER_API_KEY` - Your OpenRouter API key (required)
-- `NEXT_PUBLIC_APP_URL` - Your application URL for OpenRouter headers (optional)
+Body:
+  file: <PDF file>
+```
 
-## Model Configuration
+**Response**
 
-The application uses `google/gemini-2.0-flash-exp:free` by default. You can change this in `lib/openrouter.ts` to use other models available on OpenRouter.
+```json
+{
+  "technicalSummary": "Detailed technical analysis...",
+  "laymanSummary": "Simple explanation...",
+  "mermaidDiagram": "graph TD\n  A-->B",
+  "pageCount": 12,
+  "fileName": "document.pdf"
+}
+```
+
+**Status Codes**
+
+| Code | Description |
+|------|-------------|
+| `200` | Success |
+| `400` | Invalid file or missing PDF |
+| `500` | Processing error |
+
+## Data Flow
+
+```mermaid
+flowchart LR
+    A[PDF File] --> B[Text Extraction]
+    B --> C[Content Chunking]
+    C --> D[AI Processing]
+    D --> E{Output}
+    E --> F[Technical Summary]
+    E --> G[Layman Summary]
+    E --> H[Mermaid Diagram]
+```
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `OPENROUTER_API_KEY` | Yes | API key for OpenRouter |
+| `NEXT_PUBLIC_APP_URL` | No | Application URL for headers |
+
+### Model Configuration
+
+Default model: `google/gemini-2.0-flash-exp:free`
+
+To change models, edit `lib/openrouter.ts`:
+
+```typescript
+const response = await openrouter.chat.completions.create({
+  model: "your-preferred-model",
+  // ...
+});
+```
 
 ## Deployment
 
-The easiest way to deploy is using [Vercel](https://vercel.com):
+### Vercel (Recommended)
 
-1. Push your code to GitHub
-2. Import the project in Vercel
-3. Add your environment variables in the Vercel dashboard
+```mermaid
+flowchart LR
+    A[Push to GitHub] --> B[Import to Vercel]
+    B --> C[Set Environment Variables]
+    C --> D[Deploy]
+    D --> E[Live Application]
+```
+
+1. Push code to GitHub
+2. Import project in [Vercel](https://vercel.com)
+3. Add environment variables in dashboard
 4. Deploy
 
-## License
+### Docker
 
-MIT
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+EXPOSE 3000
+CMD ["npm", "start"]
+```
+
+## Performance
+
+| Metric | Target |
+|--------|--------|
+| PDF Processing | < 5s for 50 pages |
+| AI Response | < 10s average |
+| First Contentful Paint | < 1.5s |
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/enhancement`)
+3. Commit changes (`git commit -m 'Add enhancement'`)
+4. Push to branch (`git push origin feature/enhancement`)
+5. Open a Pull Request
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+<p align="center">
+  Built with Next.js and Gemini AI
+</p>
