@@ -71,7 +71,16 @@ Return your response in JSON format:
     throw new Error('No response from API');
   }
 
-  const result = JSON.parse(content);
+  let result: any;
+
+  try {
+    result = JSON.parse(content);
+  } catch (parseError) {
+    console.error('Failed to parse API response as JSON:', content);
+    throw new Error(
+      `API returned invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`
+    );
+  }
 
   if (result.mermaidDiagram) {
     result.mermaidDiagram = sanitizeMermaidDiagram(result.mermaidDiagram);
