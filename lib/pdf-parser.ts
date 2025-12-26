@@ -1,13 +1,13 @@
 import { getDocumentProxy, extractText } from 'unpdf';
 
-export async function extractTextFromPDF(buffer: Buffer): Promise<{ text: string; pageCount: number }> {
+export async function extractTextFromPDF(data: Uint8Array): Promise<{ text: string; pageCount: number }> {
   try {
-    if (!buffer || buffer.length === 0) {
-      throw new Error('Invalid PDF buffer: buffer is empty');
+    if (!data || data.length === 0) {
+      throw new Error('Invalid PDF data: data is empty');
     }
 
     // Get PDF document proxy
-    const pdf = await getDocumentProxy(buffer);
+    const pdf = await getDocumentProxy(data);
 
     // Extract text from all pages
     const { text, totalPages } = await extractText(pdf, { mergePages: true });

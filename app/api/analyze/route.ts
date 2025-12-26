@@ -30,12 +30,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convert file to buffer
+    // Convert file to Uint8Array (required by unpdf)
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const uint8Array = new Uint8Array(arrayBuffer);
 
     // Extract text from PDF
-    const { text, pageCount } = await extractTextFromPDF(buffer);
+    const { text, pageCount } = await extractTextFromPDF(uint8Array);
 
     if (!text || text.trim().length === 0) {
       return NextResponse.json(
