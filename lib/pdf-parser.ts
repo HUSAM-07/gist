@@ -1,34 +1,27 @@
-import { PDFParse } from 'pdf-parse';
+import { getDocumentProxy, extractText } from 'unpdf';
 
 export async function extractTextFromPDF(buffer: Buffer): Promise<{ text: string; pageCount: number }> {
-  let parser: PDFParse | null = null;
-
   try {
     if (!buffer || buffer.length === 0) {
       throw new Error('Invalid PDF buffer: buffer is empty');
     }
 
-    parser = new PDFParse({ data: buffer });
-    const textResult = await parser.getText();
+    // Get PDF document proxy
+    const pdf = await getDocumentProxy(buffer);
 
-    if (!textResult || !textResult.text) {
+    // Extract text from all pages
+    const { text, totalPages } = await extractText(pdf, { mergePages: true });
+
+    if (!text || text.trim() === '') {
       throw new Error('Failed to extract text from PDF');
     }
 
     return {
-      text: textResult.text,
-      pageCount: textResult.total || 0
+      text: text.trim(),
+      pageCount: totalPages || 0
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     throw new Error(`PDF parsing failed: ${message}`);
-  } finally {
-    if (parser) {
-      try {
-        await parser.destroy();
-      } catch (destroyError) {
-        console.error('Error destroying PDF parser:', destroyError);
-      }
-    }
   }
 }
