@@ -5,9 +5,9 @@ import { useState, useRef } from "react"
 export const WaitlistHero = () => {
   const [email, setEmail] = useState("")
   const [status, setStatus] = useState("idle") // 'idle' | 'loading' | 'success'
-  const canvasRef = useRef(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!email) return
 
@@ -27,7 +27,16 @@ export const WaitlistHero = () => {
     if (!canvas) return
 
     const ctx = canvas.getContext("2d")
-    const particles = []
+    if (!ctx) return
+    const particles: Array<{
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      life: number;
+      color: string;
+      size: number;
+    }> = []
     const colors = ["#0079da", "#10b981", "#fbbf24", "#f472b6", "#fff"]
 
     // Resize canvas to cover the button area mostly

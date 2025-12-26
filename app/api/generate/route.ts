@@ -243,7 +243,7 @@ IMPORTANT: Return ONLY valid JSON. No markdown code fences.`,
   });
 
   // Extract image URL from response.images array (OpenRouter format)
-  const message = imageResponse.choices[0]?.message as Record<string, unknown>;
+  const message = imageResponse.choices[0]?.message as unknown as Record<string, unknown>;
   let imageUrl: string | null = null;
 
   // OpenRouter returns images in message.images array

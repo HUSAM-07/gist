@@ -1,7 +1,8 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import type { Source, ChatMessage, StudioOutput, Note, Notebook } from '@/types/notebook';
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import type { Source, ChatMessage, StudioOutput, Note, Notebook, StorageStatus, StorageError } from '@/types/notebook';
+import { usePersistence } from './use-persistence';
 
 interface NotebookContextType {
   notebook: Notebook;
@@ -30,6 +31,17 @@ interface NotebookContextType {
   setSourcesPanelCollapsed: (collapsed: boolean) => void;
   isStudioPanelCollapsed: boolean;
   setStudioPanelCollapsed: (collapsed: boolean) => void;
+  // Persistence state
+  isStorageLoading: boolean;
+  isSaving: boolean;
+  lastSaved: Date | null;
+  storageStatus: StorageStatus | null;
+  storageError: StorageError | null;
+  // Persistence actions
+  exportNotebook: () => void;
+  importNotebook: (file: File) => Promise<void>;
+  clearAllData: () => Promise<void>;
+  dismissStorageError: () => void;
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 15);
@@ -53,6 +65,41 @@ export function NotebookProvider({ children }: { children: ReactNode }) {
   const [activeOutput, setActiveOutput] = useState<StudioOutput | null>(null);
   const [isSourcesPanelCollapsed, setSourcesPanelCollapsed] = useState(false);
   const [isStudioPanelCollapsed, setStudioPanelCollapsed] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  const {
+    isLoading: isStorageLoading,
+    isSaving,
+    lastSaved,
+    storageStatus,
+    error: storageError,
+    loadFromStorage,
+    saveToStorage,
+    exportNotebook: exportNotebookToFile,
+    importNotebook: importNotebookFromFile,
+    clearAllData: clearStorageData,
+    dismissError: dismissStorageError,
+  } = usePersistence();
+
+  // Load notebook from storage on mount
+  useEffect(() => {
+    const initializeFromStorage = async () => {
+      const savedNotebook = await loadFromStorage();
+      if (savedNotebook) {
+        setNotebook(savedNotebook);
+      }
+      setIsInitialized(true);
+    };
+
+    initializeFromStorage();
+  }, [loadFromStorage]);
+
+  // Auto-save when notebook changes (after initial load)
+  useEffect(() => {
+    if (isInitialized) {
+      saveToStorage(notebook);
+    }
+  }, [notebook, isInitialized, saveToStorage]);
 
   const updateNotebook = useCallback((updates: Partial<Notebook>) => {
     setNotebook((prev) => ({
@@ -155,6 +202,28 @@ export function NotebookProvider({ children }: { children: ReactNode }) {
     setActiveOutput(null);
   }, []);
 
+  // Export current notebook
+  const exportNotebook = useCallback(() => {
+    exportNotebookToFile(notebook);
+  }, [notebook, exportNotebookToFile]);
+
+  // Import notebook from file
+  const importNotebook = useCallback(async (file: File) => {
+    const importedNotebook = await importNotebookFromFile(file);
+    setNotebook(importedNotebook);
+    setActiveOutput(null);
+  }, [importNotebookFromFile]);
+
+  // Clear all data
+  const clearAllData = useCallback(async () => {
+    await clearStorageData();
+    setNotebook(createEmptyNotebook());
+    setActiveOutput(null);
+  }, [clearStorageData]);
+
+  // Show loading state while initializing from storage
+  const combinedLoadingState = isStorageLoading || !isInitialized;
+
   return (
     <NotebookContext.Provider
       value={{
@@ -177,6 +246,17 @@ export function NotebookProvider({ children }: { children: ReactNode }) {
         setSourcesPanelCollapsed,
         isStudioPanelCollapsed,
         setStudioPanelCollapsed,
+        // Persistence state
+        isStorageLoading: combinedLoadingState,
+        isSaving,
+        lastSaved,
+        storageStatus,
+        storageError,
+        // Persistence actions
+        exportNotebook,
+        importNotebook,
+        clearAllData,
+        dismissStorageError,
       }}
     >
       {children}
