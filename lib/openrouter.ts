@@ -1,13 +1,18 @@
 import OpenAI from 'openai';
 
-const openrouter = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY,
-  defaultHeaders: {
-    'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-    'X-Title': 'PDF Summarizer',
-  },
-});
+/**
+ * Create an OpenRouter client with the given API key
+ */
+export function createOpenRouterClient(apiKey: string): OpenAI {
+  return new OpenAI({
+    baseURL: 'https://openrouter.ai/api/v1',
+    apiKey,
+    defaultHeaders: {
+      'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+      'X-Title': 'Gist',
+    },
+  });
+}
 
 function sanitizeMermaidDiagram(diagram: string): string {
   return diagram
@@ -17,7 +22,9 @@ function sanitizeMermaidDiagram(diagram: string): string {
     .trim();
 }
 
-export async function summarizeText(text: string) {
+export async function summarizeText(text: string, apiKey: string) {
+  const openrouter = createOpenRouterClient(apiKey);
+
   const response = await openrouter.chat.completions.create({
     model: 'meta-llama/llama-3.3-70b-instruct',
     messages: [

@@ -16,6 +16,7 @@ import {
   Quote,
 } from 'lucide-react';
 import type { ChatMessage as ChatMessageType, Citation } from '@/types/notebook';
+import { getApiKey } from '@/lib/api-key';
 
 function ChatMessage({ message }: { message: ChatMessageType }) {
   return (
@@ -84,6 +85,15 @@ export function ChatPanel() {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      addMessage({
+        role: 'assistant',
+        content: 'Please configure your OpenRouter API key in Settings first.',
+      });
+      return;
+    }
+
     const userMessage = input.trim();
     setInput('');
     addMessage({ role: 'user', content: userMessage });
@@ -92,7 +102,10 @@ export function ChatPanel() {
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+        },
         body: JSON.stringify({
           message: userMessage,
           sources: notebook.sources,

@@ -46,6 +46,7 @@ function FlashcardsViewer({ cards }: { cards: { front: string; back: string }[] 
   const [isFlipped, setIsFlipped] = useState(false);
 
   const card = cards[currentIndex];
+  const progress = ((currentIndex + 1) / cards.length) * 100;
 
   const goNext = () => {
     if (currentIndex < cards.length - 1) {
@@ -62,86 +63,118 @@ function FlashcardsViewer({ cards }: { cards: { front: string; back: string }[] 
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">
-          Card {currentIndex + 1} of {cards.length}
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setIsFlipped(!isFlipped)}
-          className="gap-2"
-        >
-          <RotateCcw className="h-4 w-4" />
-          Flip
-        </Button>
-      </div>
-
-      <div
-        onClick={() => setIsFlipped(!isFlipped)}
-        className="cursor-pointer perspective-1000"
-      >
-        <div
-          className={`
-            relative min-h-[200px] rounded-xl
-            transition-all duration-500 transform-style-preserve-3d
-            ${isFlipped ? 'rotate-y-180' : ''}
-          `}
-        >
-          {/* Front face - Question */}
-          <div className="absolute inset-0 p-8 rounded-xl border bg-card backface-hidden">
-            <div className="absolute top-3 left-3">
-              <span className="text-xs text-muted-foreground">Question</span>
-            </div>
-            <div className="flex items-center justify-center h-full text-center">
-              <p className="text-lg font-medium">{card.front}</p>
-            </div>
-          </div>
-
-          {/* Back face - Answer */}
-          <div className="absolute inset-0 p-8 rounded-xl border bg-card backface-hidden rotate-y-180">
-            <div className="absolute top-3 left-3">
-              <span className="text-xs text-muted-foreground">Answer</span>
-            </div>
-            <div className="flex items-center justify-center h-full text-center">
-              <p className="text-lg font-medium">{card.back}</p>
-            </div>
-          </div>
+    <div className="flex flex-col h-full max-w-2xl mx-auto">
+      {/* Progress bar */}
+      <div className="mb-6">
+        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+          <div
+            className="h-full bg-primary transition-all duration-300 ease-out rounded-full"
+            style={{ width: `${progress}%` }}
+          />
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-4">
+      {/* Flashcard */}
+      <div className="flex-1 flex flex-col items-center justify-center">
+        <div
+          onClick={() => setIsFlipped(!isFlipped)}
+          className="w-full cursor-pointer perspective-1000"
+        >
+          <div
+            className={`
+              relative min-h-[280px] rounded-2xl
+              transition-all duration-500 transform-style-preserve-3d
+              ${isFlipped ? 'rotate-y-180' : ''}
+            `}
+          >
+            {/* Front face - Question */}
+            <div className="absolute inset-0 p-8 rounded-2xl border-2 bg-gradient-to-br from-card to-muted/30 shadow-lg backface-hidden flex flex-col">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-2 h-2 rounded-full bg-primary" />
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Question</span>
+              </div>
+              <div className="flex-1 flex items-center justify-center text-center px-4">
+                <p className="text-xl font-medium leading-relaxed">{card.front}</p>
+              </div>
+            </div>
+
+            {/* Back face - Answer */}
+            <div className="absolute inset-0 p-8 rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10 shadow-lg backface-hidden rotate-y-180 flex flex-col">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-2 h-2 rounded-full bg-green-500" />
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Answer</span>
+              </div>
+              <div className="flex-1 flex items-center justify-center text-center px-4">
+                <p className="text-xl font-medium leading-relaxed">{card.back}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* See answer button */}
+        <div className="mt-6">
+          <Button
+            variant={isFlipped ? "secondary" : "default"}
+            size="lg"
+            onClick={() => setIsFlipped(!isFlipped)}
+            className="gap-2 min-w-[160px]"
+          >
+            <RotateCcw className={`h-4 w-4 transition-transform duration-300 ${isFlipped ? 'rotate-180' : ''}`} />
+            {isFlipped ? 'See question' : 'See answer'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <div className="mt-8 flex items-center justify-between">
         <Button
           variant="outline"
-          size="icon"
+          size="lg"
           onClick={goPrev}
           disabled={currentIndex === 0}
+          className="gap-2"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-5 w-5" />
+          Previous
         </Button>
-        <div className="flex gap-1">
-          {cards.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => {
-                setCurrentIndex(idx);
-                setIsFlipped(false);
-              }}
-              className={`w-2 h-2 rounded-full transition-colors ${
-                idx === currentIndex ? 'bg-primary' : 'bg-muted'
-              }`}
-            />
-          ))}
+
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium tabular-nums">
+            {currentIndex + 1} / {cards.length}
+          </span>
         </div>
+
         <Button
           variant="outline"
-          size="icon"
+          size="lg"
           onClick={goNext}
           disabled={currentIndex === cards.length - 1}
+          className="gap-2"
         >
-          <ChevronRight className="h-4 w-4" />
+          Next
+          <ChevronRight className="h-5 w-5" />
         </Button>
+      </div>
+
+      {/* Card indicator dots */}
+      <div className="mt-4 flex justify-center gap-1.5 flex-wrap max-w-md mx-auto">
+        {cards.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => {
+              setCurrentIndex(idx);
+              setIsFlipped(false);
+            }}
+            className={`w-2 h-2 rounded-full transition-all duration-200 ${
+              idx === currentIndex
+                ? 'bg-primary scale-125'
+                : idx < currentIndex
+                  ? 'bg-primary/40'
+                  : 'bg-muted hover:bg-muted-foreground/30'
+            }`}
+            title={`Go to card ${idx + 1}`}
+          />
+        ))}
       </div>
     </div>
   );

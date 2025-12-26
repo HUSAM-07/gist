@@ -1,10 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNotebook } from '@/lib/notebook-context';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   AudioLines,
   Video,
@@ -20,8 +29,12 @@ import {
   Sparkles,
   PanelRight,
   StickyNote,
+  Pencil,
 } from 'lucide-react';
 import type { OutputType } from '@/types/notebook';
+import { getApiKey } from '@/lib/api-key';
+import { NoteEditorView } from './note-editor';
+import { NoteListItem } from './note-list-item';
 
 const outputTypes: { type: OutputType; icon: React.ReactNode; iconSmall: React.ReactNode; label: string; disabled?: boolean }[] = [
   { type: 'audio-overview', icon: <AudioLines className="h-5 w-5" />, iconSmall: <AudioLines className="h-4 w-4" />, label: 'Audio Overview', disabled: true },
@@ -36,19 +49,45 @@ const outputTypes: { type: OutputType; icon: React.ReactNode; iconSmall: React.R
 ];
 
 export function StudioPanel() {
-  const { notebook, addOutput, setActiveOutput, addNote, isStudioPanelCollapsed, setStudioPanelCollapsed } = useNotebook();
+  const {
+    notebook,
+    addOutput,
+    setActiveOutput,
+    addNote,
+    removeNote,
+    activeNote,
+    setActiveNote,
+    isStudioPanelCollapsed,
+    setStudioPanelCollapsed,
+  } = useNotebook();
   const [generatingType, setGeneratingType] = useState<OutputType | null>(null);
-  const [noteInput, setNoteInput] = useState('');
+  const [deleteNoteId, setDeleteNoteId] = useState<string | null>(null);
+
+  // Auto-expand when editing a note
+  useEffect(() => {
+    if (activeNote && isStudioPanelCollapsed) {
+      setStudioPanelCollapsed(false);
+    }
+  }, [activeNote, isStudioPanelCollapsed, setStudioPanelCollapsed]);
 
   const handleGenerate = async (type: OutputType) => {
     if (notebook.sources.length === 0 || generatingType) return;
+
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      alert('Please configure your OpenRouter API key in Settings first.');
+      return;
+    }
 
     setGeneratingType(type);
 
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+        },
         body: JSON.stringify({
           type,
           sources: notebook.sources,
@@ -59,6 +98,7 @@ export function StudioPanel() {
 
       if (data.error) {
         console.error('Generation error:', data.error);
+        alert(`Error: ${data.error}`);
       } else {
         const output = addOutput({
           type,
@@ -69,19 +109,41 @@ export function StudioPanel() {
       }
     } catch (error) {
       console.error('Generation error:', error);
+      alert('Failed to generate output. Please try again.');
     } finally {
       setGeneratingType(null);
     }
   };
 
-  const handleAddNote = () => {
-    if (noteInput.trim()) {
-      addNote(noteInput.trim());
-      setNoteInput('');
+  const handleAddNote = useCallback(() => {
+    const newNote = addNote();
+    setActiveNote(newNote);
+  }, [addNote, setActiveNote]);
+
+  const handleEditNote = useCallback(
+    (note: typeof notebook.notes[0]) => {
+      setActiveNote(note);
+    },
+    [setActiveNote]
+  );
+
+  const handleDeleteNote = useCallback((id: string) => {
+    setDeleteNoteId(id);
+  }, []);
+
+  const confirmDeleteNote = useCallback(() => {
+    if (deleteNoteId) {
+      removeNote(deleteNoteId);
+      setDeleteNoteId(null);
     }
-  };
+  }, [deleteNoteId, removeNote]);
 
   const hasSources = notebook.sources.length > 0;
+
+  // Show note editor when a note is active
+  if (activeNote) {
+    return <NoteEditorView />;
+  }
 
   // Collapsed view
   if (isStudioPanelCollapsed) {
@@ -128,7 +190,8 @@ export function StudioPanel() {
           variant="ghost"
           size="icon"
           className="h-8 w-8"
-          title="Notes"
+          title="Add note"
+          onClick={handleAddNote}
         >
           <StickyNote className="h-4 w-4" />
         </Button>
@@ -140,7 +203,7 @@ export function StudioPanel() {
   return (
     <div className="h-full flex flex-col bg-card min-h-0">
       {/* Header */}
-      <div className="p-4 flex items-center justify-between shrink-0">
+      <div className="h-12 border-b border-border flex items-center justify-between px-4 shrink-0">
         <h2 className="text-sm font-medium">Studio</h2>
         <Button
           variant="ghost"
@@ -153,115 +216,99 @@ export function StudioPanel() {
         </Button>
       </div>
 
-      {/* Output Types Grid */}
-      <div className="px-4">
-        <div className="grid grid-cols-2 gap-2">
-          {outputTypes.map(({ type, icon, label, disabled }) => (
-            <button
-              key={type}
-              onClick={() => handleGenerate(type)}
-              disabled={!hasSources || disabled || generatingType !== null}
-              className={`
-                flex flex-col items-center gap-2 p-4 rounded-lg border border-border
-                transition-all text-center
-                ${
-                  !hasSources || disabled
-                    ? 'opacity-50 cursor-not-allowed'
-                    : 'hover:bg-muted hover:border-primary/50 cursor-pointer'
-                }
-                ${generatingType === type ? 'bg-primary/10 border-primary' : ''}
-              `}
-            >
-              {generatingType === type ? (
-                <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              ) : (
-                <div className="text-muted-foreground">{icon}</div>
-              )}
-              <span className="text-xs font-medium">{label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <Separator className="my-4" />
-
-      {/* Generated Outputs */}
-      {notebook.outputs.length > 0 && (
-        <div className="px-4 pb-4">
-          <h3 className="text-xs font-medium text-muted-foreground mb-2">Generated</h3>
-          <div className="space-y-2">
-            {notebook.outputs.map((output) => (
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Output Types Grid */}
+        <div className="p-4">
+          <div className="grid grid-cols-2 gap-2">
+            {outputTypes.map(({ type, icon, label, disabled }) => (
               <button
-                key={output.id}
-                onClick={() => setActiveOutput(output)}
-                className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-muted text-left transition-colors"
+                key={type}
+                onClick={() => handleGenerate(type)}
+                disabled={!hasSources || disabled || generatingType !== null}
+                className={`
+                  flex items-center gap-3 p-3 rounded-lg border border-border
+                  transition-all text-left
+                  ${
+                    !hasSources || disabled
+                      ? 'opacity-50 cursor-not-allowed'
+                      : 'hover:bg-muted hover:border-primary/50 cursor-pointer'
+                  }
+                  ${generatingType === type ? 'bg-primary/10 border-primary' : ''}
+                `}
               >
-                <Sparkles className="h-4 w-4 text-primary shrink-0" />
-                <span className="text-sm truncate">{output.title}</span>
+                {generatingType === type ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" />
+                ) : (
+                  <div className="text-muted-foreground shrink-0">{icon}</div>
+                )}
+                <span className="text-xs font-medium">{label}</span>
+                <Pencil className="h-3 w-3 text-muted-foreground ml-auto opacity-50" />
               </button>
             ))}
           </div>
         </div>
-      )}
 
-      {/* Spacer */}
-      <div className="flex-1" />
+        <Separator />
 
-      {/* Empty State */}
-      {notebook.outputs.length === 0 && (
-        <div className="px-4 pb-4">
-          <div className="flex flex-col items-center text-center text-muted-foreground p-6">
-            <Sparkles className="h-8 w-8 mb-3 opacity-50" />
-            <p className="text-sm font-medium mb-1">Studio output will be saved here.</p>
-            <p className="text-xs">
-              After adding sources, click to add Audio Overview, Study Guide, Mind Map, and more!
-            </p>
-          </div>
+        {/* Notes Section */}
+        <div className="p-4">
+          {/* Notes List */}
+          {notebook.notes.length > 0 && (
+            <div className="space-y-1 mb-4">
+              {notebook.notes.map((note) => (
+                <NoteListItem
+                  key={note.id}
+                  note={note}
+                  onEdit={handleEditNote}
+                  onDelete={handleDeleteNote}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {notebook.notes.length === 0 && (
+            <div className="flex flex-col items-center text-center text-muted-foreground py-8">
+              <StickyNote className="h-8 w-8 mb-3 opacity-50" />
+              <p className="text-sm font-medium mb-1">No notes yet</p>
+              <p className="text-xs">
+                Click below to create your first note
+              </p>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
-      <Separator />
-
-      {/* Notes Section */}
-      <div className="p-4 space-y-3 shrink-0">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-medium text-muted-foreground">Notes</h3>
-          <span className="text-xs text-muted-foreground">{notebook.notes.length}</span>
-        </div>
-
-        {notebook.notes.length > 0 && (
-          <div className="space-y-2 max-h-32 overflow-y-auto">
-            {notebook.notes.map((note) => (
-              <div
-                key={note.id}
-                className="flex items-start gap-2 p-2 rounded-lg bg-muted/50 text-sm"
-              >
-                <StickyNote className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                <p className="text-xs line-clamp-2">{note.content}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="flex gap-2">
-          <Textarea
-            value={noteInput}
-            onChange={(e) => setNoteInput(e.target.value)}
-            placeholder="Add a note..."
-            className="min-h-[60px] text-sm"
-          />
-        </div>
+      {/* Add Note Button - Fixed at bottom */}
+      <div className="p-4 border-t border-border shrink-0">
         <Button
           variant="outline"
-          size="sm"
           className="w-full gap-2"
           onClick={handleAddNote}
-          disabled={!noteInput.trim()}
         >
-          <Plus className="h-4 w-4" />
+          <StickyNote className="h-4 w-4" />
           Add note
         </Button>
       </div>
+
+      {/* Delete Note Confirmation */}
+      <AlertDialog open={!!deleteNoteId} onOpenChange={() => setDeleteNoteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Note</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this note? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={confirmDeleteNote}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

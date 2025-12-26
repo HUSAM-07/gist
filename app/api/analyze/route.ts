@@ -4,6 +4,15 @@ import { extractTextFromPDF } from '@/lib/pdf-parser';
 
 export async function POST(request: NextRequest) {
   try {
+    // Require API key from header
+    const apiKey = request.headers.get('x-api-key');
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'API key required. Please configure your OpenRouter API key in Settings.' },
+        { status: 401 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File;
 
@@ -39,8 +48,8 @@ export async function POST(request: NextRequest) {
     const maxChars = 50000;
     const truncatedText = text.slice(0, maxChars);
 
-    // Get summary and visualization from OpenRouter
-    const result = await summarizeText(truncatedText);
+    // Get summary and visualization from OpenRouter using user's API key
+    const result = await summarizeText(truncatedText, apiKey);
 
     return NextResponse.json({
       success: true,
@@ -54,6 +63,16 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error processing PDF:', error);
+
+    // Check for API key related errors
+    const errorMessage = error instanceof Error ? error.message : 'Failed to process PDF';
+    if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+      return NextResponse.json(
+        { error: 'Invalid API key. Please check your OpenRouter API key in Settings.' },
+        { status: 401 }
+      );
+    }
+
     return NextResponse.json(
       { error: 'Failed to process PDF. Please try again.' },
       { status: 500 }

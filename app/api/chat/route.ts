@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import type { Source, ChatMessage, Citation } from '@/types/notebook';
-
-const openrouter = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY,
-  defaultHeaders: {
-    'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-    'X-Title': 'NotebookLM Clone',
-  },
-});
+import { createOpenRouterClient } from '@/lib/openrouter';
 
 function buildSourcesContext(sources: Source[]): string {
   if (sources.length === 0) return '';
@@ -34,11 +26,23 @@ function buildChatHistory(
 
 export async function POST(request: NextRequest) {
   try {
+    // Require API key from header
+    const apiKey = request.headers.get('x-api-key');
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'API key required. Please configure your OpenRouter API key in Settings.' },
+        { status: 401 }
+      );
+    }
+
     const { message, sources, history } = await request.json();
 
     if (!message) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
+
+    // Create OpenRouter client with user's API key
+    const openrouter = createOpenRouterClient(apiKey);
 
     const sourcesContext = buildSourcesContext(sources || []);
     const chatHistory = buildChatHistory(history || []);
@@ -108,8 +112,18 @@ Respond in JSON format:
     });
   } catch (error) {
     console.error('Chat error:', error);
+
+    // Check for API key related errors
+    const errorMessage = error instanceof Error ? error.message : 'Failed to process chat';
+    if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+      return NextResponse.json(
+        { error: 'Invalid API key. Please check your OpenRouter API key in Settings.' },
+        { status: 401 }
+      );
+    }
+
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to process chat' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

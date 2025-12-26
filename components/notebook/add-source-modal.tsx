@@ -6,7 +6,6 @@ import { useNotebook } from '@/lib/notebook-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import {
   X,
   Upload,
@@ -14,11 +13,8 @@ import {
   Cloud,
   FileText,
   Loader2,
-  Globe,
-  Zap,
-  Search,
-  ArrowRight,
 } from 'lucide-react';
+import { getApiKey } from '@/lib/api-key';
 
 type Tab = 'upload' | 'websites' | 'drive' | 'text';
 
@@ -52,6 +48,13 @@ export function AddSourceModal() {
 
   const handleUploadFile = async () => {
     if (!selectedFile) return;
+
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      alert('Please configure your OpenRouter API key in Settings first.');
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
@@ -60,10 +63,17 @@ export function AddSourceModal() {
 
       const response = await fetch('/api/analyze', {
         method: 'POST',
+        headers: {
+          'x-api-key': apiKey,
+        },
         body: formData,
       });
 
       const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to analyze PDF');
+      }
 
       if (data.success) {
         addSource({
@@ -78,6 +88,7 @@ export function AddSourceModal() {
       }
     } catch (error) {
       console.error('Upload error:', error);
+      alert(error instanceof Error ? error.message : 'Failed to upload file');
     } finally {
       setIsProcessing(false);
     }
@@ -159,30 +170,6 @@ export function AddSourceModal() {
           >
             <X className="h-5 w-5" />
           </Button>
-        </div>
-
-        {/* Web Search */}
-        <div className="px-6 pb-4">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search the web for new sources"
-              className="pl-10 pr-12 h-12 bg-muted/50"
-            />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-2">
-              <Badge variant="secondary" className="gap-1">
-                <Globe className="h-3 w-3" />
-                Web
-              </Badge>
-              <Badge variant="secondary" className="gap-1">
-                <Zap className="h-3 w-3" />
-                Fast Research
-              </Badge>
-              <Button size="icon" variant="ghost" className="h-8 w-8">
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
         </div>
 
         {/* Drop Zone / Content Area */}
