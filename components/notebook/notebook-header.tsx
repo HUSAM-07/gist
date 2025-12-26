@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useNotebook } from '@/lib/notebook-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -89,8 +90,8 @@ export function NotebookHeader() {
 
           <ThemeToggle />
 
-          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-sm font-medium shrink-0">
-            U
+          <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
+            <Image src="/gist.png" alt="Gist" width={32} height={32} className="w-full h-full object-cover" />
           </div>
         </div>
       </header>

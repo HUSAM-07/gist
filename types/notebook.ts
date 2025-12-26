@@ -58,8 +58,11 @@ export interface QuizQuestion {
 
 export interface Note {
   id: string;
-  content: string;
+  title: string;
+  content: string;          // Plain text (for search, export)
+  richContent: string;      // HTML from Tiptap editor
   createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Notebook {
@@ -103,6 +106,16 @@ export interface SerializedStudioOutput {
 }
 
 export interface SerializedNote {
+  id: string;
+  title: string;
+  content: string;
+  richContent: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Legacy note format for migration
+export interface LegacySerializedNote {
   id: string;
   content: string;
   createdAt: string;

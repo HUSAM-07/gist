@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PDF Summarizer - Transform PDFs into Insights",
+  title: "Gist",
   description: "AI-powered document analysis with visual diagrams and technical summaries. Upload any PDF and get instant, structured insights.",
 };
 

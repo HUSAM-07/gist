@@ -9,6 +9,7 @@ import type {
   SerializedStudioOutput,
   Note,
   SerializedNote,
+  LegacySerializedNote,
   NotebookExport,
 } from '@/types/notebook';
 
@@ -71,16 +72,67 @@ function deserializeStudioOutput(output: SerializedStudioOutput): StudioOutput {
 // Serialize a Note object
 function serializeNote(note: Note): SerializedNote {
   return {
-    ...note,
+    id: note.id,
+    title: note.title,
+    content: note.content,
+    richContent: note.richContent,
     createdAt: note.createdAt.toISOString(),
+    updatedAt: note.updatedAt.toISOString(),
   };
 }
 
-// Deserialize a Note object
-function deserializeNote(note: SerializedNote): Note {
+// Check if a note is in legacy format (no title, richContent, updatedAt)
+function isLegacyNote(note: SerializedNote | LegacySerializedNote): note is LegacySerializedNote {
+  return !('title' in note) || !('richContent' in note) || !('updatedAt' in note);
+}
+
+// Escape HTML for converting plain text to simple HTML
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// Migrate legacy note to new format
+function migrateNote(note: SerializedNote | LegacySerializedNote): SerializedNote {
+  if (!isLegacyNote(note)) {
+    return note;
+  }
+
+  // Extract title from first line of content (max 50 chars)
+  const firstLine = note.content.split('\n')[0] || '';
+  const title = firstLine.slice(0, 50) || 'Untitled';
+
+  // Convert plain text to HTML paragraphs
+  const htmlContent = note.content
+    .split('\n')
+    .filter(line => line.trim())
+    .map(line => `<p>${escapeHtml(line)}</p>`)
+    .join('') || '<p></p>';
+
   return {
-    ...note,
-    createdAt: new Date(note.createdAt),
+    id: note.id,
+    title,
+    content: note.content,
+    richContent: htmlContent,
+    createdAt: note.createdAt,
+    updatedAt: note.createdAt, // Use createdAt for legacy notes
+  };
+}
+
+// Deserialize a Note object (with migration support)
+function deserializeNote(note: SerializedNote | LegacySerializedNote): Note {
+  const migrated = migrateNote(note);
+  return {
+    id: migrated.id,
+    title: migrated.title,
+    content: migrated.content,
+    richContent: migrated.richContent,
+    createdAt: new Date(migrated.createdAt),
+    updatedAt: new Date(migrated.updatedAt),
   };
 }
 

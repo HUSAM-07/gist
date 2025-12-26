@@ -16,7 +16,8 @@ interface NotebookContextType {
   addOutput: (output: Omit<StudioOutput, 'id' | 'generatedAt'>) => void;
   removeOutput: (id: string) => void;
   // Notes
-  addNote: (content: string) => void;
+  addNote: (title?: string) => Note;
+  updateNote: (id: string, updates: Partial<Pick<Note, 'title' | 'content' | 'richContent'>>) => void;
   removeNote: (id: string) => void;
   // Notebook
   setTitle: (title: string) => void;
@@ -26,6 +27,8 @@ interface NotebookContextType {
   setAddSourceModalOpen: (open: boolean) => void;
   activeOutput: StudioOutput | null;
   setActiveOutput: (output: StudioOutput | null) => void;
+  activeNote: Note | null;
+  setActiveNote: (note: Note | null) => void;
   // Panel collapse state
   isSourcesPanelCollapsed: boolean;
   setSourcesPanelCollapsed: (collapsed: boolean) => void;
@@ -63,6 +66,7 @@ export function NotebookProvider({ children }: { children: ReactNode }) {
   const [notebook, setNotebook] = useState<Notebook>(createEmptyNotebook);
   const [isAddSourceModalOpen, setAddSourceModalOpen] = useState(false);
   const [activeOutput, setActiveOutput] = useState<StudioOutput | null>(null);
+  const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [isSourcesPanelCollapsed, setSourcesPanelCollapsed] = useState(false);
   const [isStudioPanelCollapsed, setStudioPanelCollapsed] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -172,17 +176,41 @@ export function NotebookProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const addNote = useCallback((content: string) => {
+  const addNote = useCallback((title?: string): Note => {
+    const now = new Date();
     const newNote: Note = {
       id: generateId(),
-      content,
-      createdAt: new Date(),
+      title: title || 'New Note',
+      content: '',
+      richContent: '<p></p>',
+      createdAt: now,
+      updatedAt: now,
     };
     setNotebook((prev) => ({
       ...prev,
-      notes: [...prev.notes, newNote],
-      updatedAt: new Date(),
+      notes: [newNote, ...prev.notes], // Add new notes at the beginning
+      updatedAt: now,
     }));
+    return newNote;
+  }, []);
+
+  const updateNote = useCallback((id: string, updates: Partial<Pick<Note, 'title' | 'content' | 'richContent'>>) => {
+    const now = new Date();
+    setNotebook((prev) => ({
+      ...prev,
+      notes: prev.notes.map((note) =>
+        note.id === id
+          ? { ...note, ...updates, updatedAt: now }
+          : note
+      ),
+      updatedAt: now,
+    }));
+    // Also update activeNote if it's the one being edited
+    setActiveNote((prev) =>
+      prev && prev.id === id
+        ? { ...prev, ...updates, updatedAt: now }
+        : prev
+    );
   }, []);
 
   const removeNote = useCallback((id: string) => {
@@ -191,6 +219,8 @@ export function NotebookProvider({ children }: { children: ReactNode }) {
       notes: prev.notes.filter((n) => n.id !== id),
       updatedAt: new Date(),
     }));
+    // Clear activeNote if it's the one being deleted
+    setActiveNote((prev) => (prev && prev.id === id ? null : prev));
   }, []);
 
   const setTitle = useCallback((title: string) => {
@@ -200,6 +230,7 @@ export function NotebookProvider({ children }: { children: ReactNode }) {
   const resetNotebook = useCallback(() => {
     setNotebook(createEmptyNotebook());
     setActiveOutput(null);
+    setActiveNote(null);
   }, []);
 
   // Export current notebook
@@ -212,6 +243,7 @@ export function NotebookProvider({ children }: { children: ReactNode }) {
     const importedNotebook = await importNotebookFromFile(file);
     setNotebook(importedNotebook);
     setActiveOutput(null);
+    setActiveNote(null);
   }, [importNotebookFromFile]);
 
   // Clear all data
@@ -219,6 +251,7 @@ export function NotebookProvider({ children }: { children: ReactNode }) {
     await clearStorageData();
     setNotebook(createEmptyNotebook());
     setActiveOutput(null);
+    setActiveNote(null);
   }, [clearStorageData]);
 
   // Show loading state while initializing from storage
@@ -235,6 +268,7 @@ export function NotebookProvider({ children }: { children: ReactNode }) {
         addOutput,
         removeOutput,
         addNote,
+        updateNote,
         removeNote,
         setTitle,
         resetNotebook,
@@ -242,6 +276,8 @@ export function NotebookProvider({ children }: { children: ReactNode }) {
         setAddSourceModalOpen,
         activeOutput,
         setActiveOutput,
+        activeNote,
+        setActiveNote,
         isSourcesPanelCollapsed,
         setSourcesPanelCollapsed,
         isStudioPanelCollapsed,
