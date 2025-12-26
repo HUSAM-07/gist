@@ -64,8 +64,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error processing PDF:', error);
 
-    // Check for API key related errors
     const errorMessage = error instanceof Error ? error.message : 'Failed to process PDF';
+
+    // Check for API key related errors
     if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
       return NextResponse.json(
         { error: 'Invalid API key. Please check your OpenRouter API key in Settings.' },
@@ -73,8 +74,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check for PDF parsing errors
+    if (errorMessage.includes('PDF parsing failed')) {
+      return NextResponse.json(
+        { error: 'Failed to parse PDF. The file may be corrupted or in an unsupported format.' },
+        { status: 400 }
+      );
+    }
+
+    // Check for JSON parsing errors
+    if (errorMessage.includes('Invalid JSON') || errorMessage.includes('JSON response')) {
+      return NextResponse.json(
+        { error: 'Failed to process API response. Please try again.' },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
-      { error: 'Failed to process PDF. Please try again.' },
+      { error: errorMessage || 'Failed to process PDF. Please try again.' },
       { status: 500 }
     );
   }

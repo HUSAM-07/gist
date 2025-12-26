@@ -39,7 +39,31 @@ export async function apiRequest<T = unknown>(
     headers,
   });
 
-  const data = await response.json();
+  let data: any;
+
+  try {
+    const text = await response.text();
+
+    if (!text || text.trim() === '') {
+      throw new ApiError(
+        'Empty response from server',
+        response.status,
+        'EMPTY_RESPONSE'
+      );
+    }
+
+    data = JSON.parse(text);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    throw new ApiError(
+      `Invalid JSON response from server: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      response.status,
+      'INVALID_JSON'
+    );
+  }
 
   if (!response.ok) {
     throw new ApiError(

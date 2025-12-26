@@ -69,7 +69,22 @@ export function AddSourceModal() {
         body: formData,
       });
 
-      const data = await response.json();
+      let data: any;
+
+      try {
+        const text = await response.text();
+
+        if (!text || text.trim() === '') {
+          throw new Error('Empty response from server');
+        }
+
+        data = JSON.parse(text);
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+        throw new Error(
+          `Server returned invalid response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`
+        );
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to analyze PDF');
