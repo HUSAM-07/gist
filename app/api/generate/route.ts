@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import type OpenAI from 'openai';
 import type { Source, OutputType } from '@/types/notebook';
-
-const openrouter = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY,
-  defaultHeaders: {
-    'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-    'X-Title': 'NotebookLM Clone',
-  },
-});
+import { createOpenRouterClient } from '@/lib/openrouter';
 
 function buildSourcesContent(sources: Source[]): string {
   return sources
@@ -176,7 +168,7 @@ Return JSON:
 }`,
 };
 
-async function generateInfographic(sources: Source[]) {
+async function generateInfographic(sources: Source[], openrouter: OpenAI) {
   const sourcesContent = buildSourcesContent(sources);
 
   // Step 1: Generate a prompt for the infographic using LLM
@@ -272,6 +264,15 @@ IMPORTANT: Return ONLY valid JSON. No markdown code fences.`,
 
 export async function POST(request: NextRequest) {
   try {
+    // Require API key from header
+    const apiKey = request.headers.get('x-api-key');
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'API key required. Please configure your OpenRouter API key in Settings.' },
+        { status: 401 }
+      );
+    }
+
     const { type, sources } = await request.json();
 
     if (!type || !sources || sources.length === 0) {
@@ -281,9 +282,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Create OpenRouter client with user's API key
+    const openrouter = createOpenRouterClient(apiKey);
+
     // Handle infographic separately with image generation
     if (type === 'infographic') {
-      const result = await generateInfographic(sources);
+      const result = await generateInfographic(sources, openrouter);
       return NextResponse.json(result);
     }
 
@@ -330,8 +334,18 @@ IMPORTANT: Return ONLY valid JSON. No markdown code fences around the JSON.`,
     return NextResponse.json(result);
   } catch (error) {
     console.error('Generation error:', error);
+
+    // Check for API key related errors
+    const errorMessage = error instanceof Error ? error.message : 'Failed to generate output';
+    if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+      return NextResponse.json(
+        { error: 'Invalid API key. Please check your OpenRouter API key in Settings.' },
+        { status: 401 }
+      );
+    }
+
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to generate output' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

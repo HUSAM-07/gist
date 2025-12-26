@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { StorageStatus } from './storage-status';
-import { StorageManagementModal } from './storage-management-modal';
+import { SettingsModal } from './settings-modal';
 import {
   Home,
   Plus,
@@ -17,7 +17,7 @@ export function NotebookHeader() {
   const { notebook, setTitle } = useNotebook();
   const [isEditing, setIsEditing] = useState(false);
   const [titleValue, setTitleValue] = useState(notebook.title);
-  const [isStorageModalOpen, setStorageModalOpen] = useState(false);
+  const [isSettingsOpen, setSettingsOpen] = useState(false);
 
   const handleTitleSubmit = () => {
     setTitle(titleValue || 'Untitled notebook');
@@ -53,7 +53,7 @@ export function NotebookHeader() {
 
           {/* Storage Status - visible on larger screens */}
           <div className="hidden md:block">
-            <StorageStatus onClick={() => setStorageModalOpen(true)} />
+            <StorageStatus onClick={() => setSettingsOpen(true)} />
           </div>
         </div>
 
@@ -61,7 +61,7 @@ export function NotebookHeader() {
         <div className="flex items-center gap-1 sm:gap-2">
           {/* Storage Status - mobile */}
           <div className="md:hidden">
-            <StorageStatus onClick={() => setStorageModalOpen(true)} />
+            <StorageStatus onClick={() => setSettingsOpen(true)} />
           </div>
 
           <Button variant="default" size="sm" className="gap-2">
@@ -73,7 +73,7 @@ export function NotebookHeader() {
             variant="ghost"
             size="icon"
             className="sm:hidden"
-            onClick={() => setStorageModalOpen(true)}
+            onClick={() => setSettingsOpen(true)}
           >
             <Settings className="h-4 w-4" />
           </Button>
@@ -81,7 +81,7 @@ export function NotebookHeader() {
             variant="ghost"
             size="sm"
             className="gap-2 hidden sm:flex"
-            onClick={() => setStorageModalOpen(true)}
+            onClick={() => setSettingsOpen(true)}
           >
             <Settings className="h-4 w-4" />
             Settings
@@ -95,10 +95,10 @@ export function NotebookHeader() {
         </div>
       </header>
 
-      {/* Storage Management Modal */}
-      <StorageManagementModal
-        open={isStorageModalOpen}
-        onOpenChange={setStorageModalOpen}
+      {/* Settings Modal */}
+      <SettingsModal
+        open={isSettingsOpen}
+        onOpenChange={setSettingsOpen}
       />
     </>
   );

@@ -22,6 +22,7 @@ import {
   StickyNote,
 } from 'lucide-react';
 import type { OutputType } from '@/types/notebook';
+import { getApiKey } from '@/lib/api-key';
 
 const outputTypes: { type: OutputType; icon: React.ReactNode; iconSmall: React.ReactNode; label: string; disabled?: boolean }[] = [
   { type: 'audio-overview', icon: <AudioLines className="h-5 w-5" />, iconSmall: <AudioLines className="h-4 w-4" />, label: 'Audio Overview', disabled: true },
@@ -43,12 +44,21 @@ export function StudioPanel() {
   const handleGenerate = async (type: OutputType) => {
     if (notebook.sources.length === 0 || generatingType) return;
 
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      alert('Please configure your OpenRouter API key in Settings first.');
+      return;
+    }
+
     setGeneratingType(type);
 
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+        },
         body: JSON.stringify({
           type,
           sources: notebook.sources,
@@ -59,6 +69,7 @@ export function StudioPanel() {
 
       if (data.error) {
         console.error('Generation error:', data.error);
+        alert(`Error: ${data.error}`);
       } else {
         const output = addOutput({
           type,
@@ -69,6 +80,7 @@ export function StudioPanel() {
       }
     } catch (error) {
       console.error('Generation error:', error);
+      alert('Failed to generate output. Please try again.');
     } finally {
       setGeneratingType(null);
     }
