@@ -80,7 +80,7 @@ mindmap
       shadcn/ui
     Backend
       Next.js API Routes
-      pdf-parse
+      unpdf
     AI
       OpenRouter
       Gemini 2.0 Flash
@@ -96,7 +96,7 @@ mindmap
 | `typescript` | Type-safe development |
 | `tailwindcss` | Utility-first styling |
 | `@radix-ui/*` | Accessible UI primitives |
-| `pdf-parse` | PDF text extraction |
+| `unpdf` | Serverless-compatible PDF text extraction |
 | `mermaid` | Diagram rendering |
 | `react-dropzone` | File upload handling |
 
@@ -116,17 +116,16 @@ cd gist
 
 # Install dependencies
 npm install
-
-# Configure environment
-cp .env.example .env.local
 ```
 
-Edit `.env.local`:
+**Optional:** Create `.env.local` to pre-fill API key:
 
 ```env
-OPENROUTER_API_KEY=your_api_key_here
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+OPENROUTER_API_KEY=your_api_key_here  # Optional
+NEXT_PUBLIC_APP_URL=http://localhost:3000  # Optional
 ```
+
+**Note:** Environment variables are optional. You can configure your API key through the Settings UI after starting the app.
 
 ### Development
 
@@ -211,8 +210,10 @@ flowchart LR
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `OPENROUTER_API_KEY` | Yes | API key for OpenRouter |
+| `OPENROUTER_API_KEY` | No | Optional: Pre-fills API key (stored client-side by default) |
 | `NEXT_PUBLIC_APP_URL` | No | Application URL for headers |
+
+**Note:** API keys are stored in browser localStorage by default. Users configure their own keys through the Settings UI.
 
 ### Model Configuration
 
@@ -229,7 +230,20 @@ const response = await openrouter.chat.completions.create({
 
 ## Deployment
 
-### Vercel (Recommended)
+### Platform Compatibility
+
+This application uses `unpdf` for PDF parsing, which is designed to work across all serverless platforms without native dependencies.
+
+**Supported Platforms:**
+- ✅ Vercel (Serverless Functions & Edge Runtime)
+- ✅ Render.com (Native Node.js runtime)
+- ✅ Cloudflare Workers
+- ✅ AWS Lambda
+- ✅ Any Node.js environment
+
+### Deployment Constraints
+
+#### Vercel (Recommended)
 
 ```mermaid
 flowchart LR
@@ -239,12 +253,84 @@ flowchart LR
     D --> E[Live Application]
 ```
 
+**Plan Requirements:**
+- **Hobby (Free):** ✅ Works for most PDFs
+  - Function Timeout: 10 seconds
+  - Memory: 1GB
+  - Body Size Limit: 4.5MB (default)
+- **Pro ($20/month):** Recommended for large PDFs
+  - Function Timeout: 60 seconds
+  - Memory: 3GB
+  - Body Size Limit: Configurable up to 10MB
+
+**Deployment Steps:**
 1. Push code to GitHub
 2. Import project in [Vercel](https://vercel.com)
-3. Add environment variables in dashboard
+3. Add `OPENROUTER_API_KEY` in environment variables
 4. Deploy
 
+**Note:** For large PDFs (>5MB) or complex processing that takes >10 seconds, consider upgrading to Pro plan.
+
+#### Render.com Alternative
+
+If you prefer Render over Vercel, the app works on Render's free tier:
+
+**Benefits:**
+- ✅ 750 hours/month free tier
+- ✅ 90-second timeout (free web services)
+- ✅ No cold start issues on paid tier
+- ✅ Integrated PostgreSQL
+
+**Limitations:**
+- ⚠️ Free tier spins down after 15 minutes of inactivity
+- ⚠️ Cold starts can take 30-60 seconds
+- ⚠️ PostgreSQL free tier expires after 30 days
+
+**Deployment:**
+```bash
+# Render will auto-detect Next.js and deploy
+git push origin main
+```
+
+### Environment Variables
+
+All API keys are configured **client-side** - no server environment variables needed for core functionality.
+
+- OpenRouter API key is stored in browser localStorage
+- Users configure their own API keys through Settings UI
+
+For development, you can optionally set:
+```env
+OPENROUTER_API_KEY=your_api_key_here  # Optional: Pre-fills API key
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+### Troubleshooting
+
+**Error: "Empty response from server"**
+- Check if PDF file size exceeds body limit (default 4.5MB)
+- Verify OpenRouter API key is valid
+- On Vercel Hobby, ensure processing completes within 10 seconds
+
+**Error: "PDF parsing failed"**
+- Verify PDF is not corrupted or password-protected
+- Check PDF is valid format (not scanned image)
+- Try reducing PDF file size
+
+**Previously Used pdf-parse?**
+
+This app migrated from `pdf-parse` to `unpdf` to ensure serverless compatibility. If you're upgrading from an older version:
+
+```bash
+npm uninstall pdf-parse canvas
+npm install unpdf
+```
+
+The `pdf-parse` library required native canvas dependencies that don't work in serverless environments. `unpdf` is pure JavaScript and works everywhere.
+
 ### Docker
+
+For advanced deployment scenarios:
 
 ```dockerfile
 FROM node:18-alpine
